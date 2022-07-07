@@ -51,13 +51,31 @@ contract SanenergyToken is Context, IERC20, Ownable {
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
     
-    uint256 public _maxTxAmount = 10**7 * 10**9;
-    uint256 private numTokensSellToAddToLiquidity = 10**5 * 10**9;
+    uint256 public _maxTxAmount = 10**9 * 10**9;
+    uint256 private numTokensSellToAddToLiquidity = 10**7 * 10**9;
 
     address private charityAddress;
     address private devAddress;
+
+    struct FeeValues {
+        uint256 rAmount;
+        uint256 rTransferAmount;
+        uint256 rFee;
+        uint256 tTransferAmount;
+        uint256 tFee;
+        uint256 tLiquidity;
+        uint256 tCharity;
+        uint256 tDev;
+    }
+
+    struct tFeeValues {
+        uint256 tTransferAmount;
+        uint256 tFee;
+        uint256 tLiquidity;
+        uint256 tCharity;
+        uint256 tDev;
+    }
     
-    event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
     event SwapAndLiquify(
         uint256 tokensSwapped,
@@ -74,7 +92,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
     constructor (address _charity, address _dev) {
         _rOwned[_msgSender()] = _rTotal;
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);   // create pair in pancakeswap
          // Create a uniswap pair for this new token
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -151,23 +169,14 @@ contract SanenergyToken is Context, IERC20, Ownable {
         return _tFeeTotal;
     }
 
-    function deliver(uint256 tAmount) public {
-        address sender = _msgSender();
-        require(!_isExcluded[sender], "Excluded addresses cannot call this function");
-        (uint256 rAmount,,,,,,,) = _getValues(tAmount);
-        _rOwned[sender] = _rOwned[sender].sub(rAmount);
-        _rTotal = _rTotal.sub(rAmount);
-        _tFeeTotal = _tFeeTotal.add(tAmount);
-    }
-
     function reflectionFromToken(uint256 tAmount, bool deductTransferFee) public view returns(uint256) {
         require(tAmount <= _tTotal, "Amount must be less than supply");
         if (!deductTransferFee) {
-            (uint256 rAmount,,,,,,,) = _getValues(tAmount);
-            return rAmount;
+            FeeValues memory _values = _getValues(tAmount);
+            return _values.rAmount;
         } else {
-            (,uint256 rTransferAmount,,,,,,) = _getValues(tAmount);
-            return rTransferAmount;
+            FeeValues memory _values = _getValues(tAmount);
+            return _values.rTransferAmount;
         }
     }
 
@@ -201,19 +210,19 @@ contract SanenergyToken is Context, IERC20, Ownable {
     }
 
     function _transferBothExcluded(address sender, address recipient, uint256 tAmount) private {
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee, uint256 tTransferAmount, uint256 tFee, uint256 tLiquidity, uint256 tCharity, uint256 tDev) = _getValues(tAmount);
+        FeeValues memory _values = _getValues(tAmount);
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
-        _rOwned[sender] = _rOwned[sender].sub(rAmount);
-        _tOwned[recipient] = _tOwned[recipient].add(tTransferAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);        
-        _takeLiquidity(tLiquidity);
-        _reflectFee(rFee, tFee);
-        _takeCharity(tCharity);
-        _takeDev(tDev);
-        emit Transfer(sender, recipient, tTransferAmount);
+        _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
+        _tOwned[recipient] = _tOwned[recipient].add(_values.tTransferAmount);
+        _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);        
+        _takeLiquidity(_values.tLiquidity);
+        _reflectFee(_values.rFee, _values.tFee);
+        _takeCharity(_values.tCharity);
+        _takeDev(_values.tDev);
+        emit Transfer(sender, recipient, _values.tTransferAmount);
     }
     
-        function excludeFromFee(address account) public onlyOwner {
+    function excludeFromFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = true;
     }
     
@@ -239,13 +248,21 @@ contract SanenergyToken is Context, IERC20, Ownable {
    
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner {
         _maxTxAmount = _tTotal.mul(maxTxPercent).div(
-            10**2
+            10**6
         );
     }
 
     function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner {
         swapAndLiquifyEnabled = _enabled;
         emit SwapAndLiquifyEnabledUpdated(_enabled);
+    }
+
+    function setCharityAddress(address _charityAddress) external onlyOwner {
+        charityAddress = _charityAddress;
+    }
+
+    function setDevAddress(address _devAddress) external onlyOwner {
+        devAddress = _devAddress;
     }
     
      //to recieve ETH from uniswapV2Router when swaping
@@ -256,19 +273,24 @@ contract SanenergyToken is Context, IERC20, Ownable {
         _tFeeTotal = _tFeeTotal.add(tFee);
     }
 
-    function _getValues(uint256 tAmount) private view returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256) {
-        (uint256 tTransferAmount, uint256 tFee, uint256 tLiquidity, uint256 tCharity, uint256 tDev) = _getTValues(tAmount);
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tFee, tLiquidity.add(tCharity).add(tDev), _getRate());
-        return (rAmount, rTransferAmount, rFee, tTransferAmount, tFee, tLiquidity, tCharity, tDev);
+    function _getValues(uint256 tAmount) private view returns (FeeValues memory) {
+        tFeeValues memory tValues = _getTValues(tAmount);
+        uint256 tOther = tValues.tLiquidity.add(tValues.tCharity).add(tValues.tDev);
+        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(tAmount, tValues.tFee, tOther, _getRate());
+        return FeeValues(rAmount, rTransferAmount, rFee, tValues.tTransferAmount, tValues.tFee, tValues.tLiquidity, tValues.tCharity, tValues.tDev);
     }
 
-    function _getTValues(uint256 tAmount) private view returns (uint256, uint256, uint256, uint256, uint256) {
-        uint256 tFee = calculateReflectionFee(tAmount);
-        uint256 tLiquidity = calculateLiquidityFee(tAmount);
-        uint256 tCharity = calculateCharityFee(tAmount);
-        uint256 tDev = calculateDevFee(tAmount);
-        uint256 tTransferAmount = tAmount.sub(tFee).sub(tLiquidity).sub(tCharity).sub(tDev);
-        return (tTransferAmount, tFee, tLiquidity, tCharity, tDev);
+    function _getTValues(uint256 tAmount) private view returns (tFeeValues memory) {
+
+        tFeeValues memory tValues = tFeeValues(
+            0,
+            calculateReflectionFee(tAmount),
+            calculateLiquidityFee(tAmount),
+            calculateCharityFee(tAmount),
+            calculateDevFee(tAmount)
+        );
+        tValues.tTransferAmount = tAmount.sub(tValues.tFee).sub(tValues.tLiquidity).sub(tValues.tCharity).sub(tValues.tDev);
+        return tValues;
     }
 
     function _getRValues(uint256 tAmount, uint256 tFee, uint256 tOther, uint256 currentRate) private pure returns (uint256, uint256, uint256) {
@@ -418,7 +440,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
         bool takeFee = true;
         
         //if any account belongs to _isExcludedFromFee account then remove the fee
-        if(_isExcludedFromFee[from] || _isExcludedFromFee[to]){
+        if(_isExcludedFromFee[from] || _isExcludedFromFee[to]) {
             takeFee = false;
         }
 
@@ -427,7 +449,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
             takeFee = false;
         }
         
-        //transfer amount, it will take tax, burn, liquidity fee
+        //transfer amount, it will take reflectionFee, liquidity fee, charity fee, dev fee
         _tokenTransfer(from,to,amount,takeFee);
     }
 
@@ -448,7 +470,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
         // how much ETH did we just swap into?
         uint256 newBalance = address(this).balance.sub(initialBalance);
 
-        // add liquidity to uniswap
+        // add liquidity
         addLiquidity(otherHalf, newBalance);
         
         emit SwapAndLiquify(half, newBalance, otherHalf);
@@ -510,37 +532,37 @@ contract SanenergyToken is Context, IERC20, Ownable {
     }
 
     function _transferStandard(address sender, address recipient, uint256 tAmount) private {
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee, uint256 tTransferAmount, uint256 tFee, uint256 tLiquidity, uint256 tCharity, uint256 tDev) = _getValues(tAmount);
-        _rOwned[sender] = _rOwned[sender].sub(rAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-        _takeLiquidity(tLiquidity);
-        _reflectFee(rFee, tFee);
-        _takeCharity(tCharity);
-        _takeDev(tDev);
-        emit Transfer(sender, recipient, tTransferAmount);
+        FeeValues memory _values = _getValues(tAmount);
+        _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
+        _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
+        _takeLiquidity(_values.tLiquidity);
+        _reflectFee(_values.rFee, _values.tFee);
+        _takeCharity(_values.tCharity);
+        _takeDev(_values.tDev);
+        emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
     function _transferToExcluded(address sender, address recipient, uint256 tAmount) private {
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee, uint256 tTransferAmount, uint256 tFee, uint256 tLiquidity, uint256 tCharity, uint256 tDev) = _getValues(tAmount);
-        _rOwned[sender] = _rOwned[sender].sub(rAmount);
-        _tOwned[recipient] = _tOwned[recipient].add(tTransferAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);           
-        _takeLiquidity(tLiquidity);
-        _reflectFee(rFee, tFee);
-        _takeCharity(tCharity);
-        _takeDev(tDev);
-        emit Transfer(sender, recipient, tTransferAmount);
+        FeeValues memory _values = _getValues(tAmount);
+        _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
+        _tOwned[recipient] = _tOwned[recipient].add(_values.tTransferAmount);
+        _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);           
+        _takeLiquidity(_values.tLiquidity);
+        _reflectFee(_values.rFee, _values.tFee);
+        _takeCharity(_values.tCharity);
+        _takeDev(_values.tDev);
+        emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 
     function _transferFromExcluded(address sender, address recipient, uint256 tAmount) private {
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee, uint256 tTransferAmount, uint256 tFee, uint256 tLiquidity, uint256 tCharity, uint256 tDev) = _getValues(tAmount);
+        FeeValues memory _values = _getValues(tAmount);
         _tOwned[sender] = _tOwned[sender].sub(tAmount);
-        _rOwned[sender] = _rOwned[sender].sub(rAmount);
-        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-        _takeLiquidity(tLiquidity);
-        _reflectFee(rFee, tFee);
-        _takeCharity(tCharity);
-        _takeDev(tDev);
-        emit Transfer(sender, recipient, tTransferAmount);
+        _rOwned[sender] = _rOwned[sender].sub(_values.rAmount);
+        _rOwned[recipient] = _rOwned[recipient].add(_values.rTransferAmount);
+        _takeLiquidity(_values.tLiquidity);
+        _reflectFee(_values.rFee, _values.tFee);
+        _takeCharity(_values.tCharity);
+        _takeDev(_values.tDev);
+        emit Transfer(sender, recipient, _values.tTransferAmount);
     }
 }
