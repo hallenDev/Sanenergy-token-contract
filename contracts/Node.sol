@@ -266,7 +266,7 @@ contract Node is Ownable {
         nodePrice = newNodePrice;
     }
 
-    function _changeRewardPerSec(uint256 newPrice) external onlySentry {
+    function _changeRewardPerSecond(uint256 newPrice) external onlySentry {
         rewardPerSec = newPrice;
     }
 

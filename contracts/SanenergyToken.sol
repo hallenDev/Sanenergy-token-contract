@@ -52,6 +52,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
     bool public swapAndLiquifyEnabled = true;
     
     uint256 public _maxTxAmount = 10**9 * 10**9;
+    mapping(address => bool) isExcludedTxLimit;
     uint256 private numTokensSellToAddToLiquidity = 10**7 * 10**9;
 
     address private charityAddress;
@@ -222,6 +223,10 @@ contract SanenergyToken is Context, IERC20, Ownable {
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
     
+    function setTxLimitState(address account, bool status) external onlyOwner {
+        isExcludedTxLimit[account] = status;
+    }
+
     function excludeFromFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = true;
     }
@@ -409,7 +414,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-        if(from != owner() && to != owner()) {
+        if(from != owner() && to != owner() && !isExcludedTxLimit[from] && !isExcludedTxLimit[to]) {
             require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
         }
 
