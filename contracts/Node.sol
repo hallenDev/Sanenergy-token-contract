@@ -83,11 +83,11 @@ contract Node is Ownable {
     }
 
     function binary_search(
-        NodeEntity[] memory arr,
+        NodeEntity[] storage arr,
         uint256 low,
         uint256 high,
         uint256 x
-    ) private view returns (int256) {
+    ) internal view returns (int256) {
         if (high >= low) {
             uint256 mid = (high + low).div(2);
             if (arr[mid].creationTime == x) {
@@ -106,7 +106,7 @@ contract Node is Ownable {
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         require(nodesCount > 0, "NODE: CREATIME must be higher than zero");
-        NodeEntity memory _node;
+        NodeEntity storage _node;
         uint256 rewardsTotal = 0;
         for (uint256 i = 0; i < nodesCount; i++) {
             _node = nodes[i];
@@ -156,7 +156,7 @@ contract Node is Ownable {
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 numberOfNodes = nodes.length;
         require(numberOfNodes > 0, "CASHOUT ERROR: You don't have nodes to cash-out");
-        NodeEntity memory node = _getNodeWithCreatime(nodes, _creationTime);
+        NodeEntity storage node = _getNodeWithCreatime(nodes, _creationTime);
         uint256 rewardNode = (block.timestamp.sub(node.lastClaimTime)).mul(rewardPerSec);
         return rewardNode;
     }
@@ -165,7 +165,7 @@ contract Node is Ownable {
         require(isNodeOwner(account), "GET NAMES: NO NODE OWNER");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-        NodeEntity memory _node;
+        NodeEntity storage _node;
         string memory names = nodes[0].name;
         string memory separator = "#";
         for (uint256 i = 1; i < nodesCount; i++) {
@@ -179,7 +179,7 @@ contract Node is Ownable {
         require(isNodeOwner(account), "GET CREATIME: NO NODE OWNER");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-        NodeEntity memory _node;
+        NodeEntity storage _node;
         string memory _creationTimes = uint2str(nodes[0].creationTime);
         string memory separator = "#";
 
@@ -201,7 +201,7 @@ contract Node is Ownable {
         require(isNodeOwner(account), "GET REWARD: NO NODE OWNER");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-        NodeEntity memory _node;
+        NodeEntity storage _node;
         uint256 reward = (block.timestamp - nodes[0].lastClaimTime) * rewardPerSec;
         string memory _rewardsAvailable = uint2str(reward);
         string memory separator = "#";
@@ -222,7 +222,7 @@ contract Node is Ownable {
         require(isNodeOwner(account), "LAST CLAIME TIME: NO NODE OWNER");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-        NodeEntity memory _node;
+        NodeEntity storage _node;
         string memory _lastClaimTimes = uint2str(nodes[0].lastClaimTime);
         string memory separator = "#";
 
