@@ -54,7 +54,7 @@ contract Node is Ownable {
     }
 
     function isNameAvailable(address account, string memory nodeName) public view returns (bool) {
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         for (uint256 i = 0; i < nodes.length; i++) {
             if (keccak256(bytes(nodes[i].name)) == keccak256(bytes(nodeName))) {
                 return false;
@@ -68,7 +68,7 @@ contract Node is Ownable {
         nodeOwners.remove(nodeOwners.getKeyAtIndex(index));
     }
 
-    function _getNodeWithCreatime(NodeEntity[] memory nodes, uint256 _creationTime) public view returns (NodeEntity memory) {
+    function _getNodeWithCreatime(NodeEntity[] storage nodes, uint256 _creationTime) internal view returns (NodeEntity storage) {
         uint256 numberOfNodes = nodes.length;
         require(numberOfNodes > 0, "CASHOUT ERROR: You don't have nodes to cash-out");
         bool found = false;
@@ -102,8 +102,8 @@ contract Node is Ownable {
         }
     }
 
-    function _cashoutAllNodesReward(address account) external onlySentry view returns (uint256) {
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+    function _cashoutAllNodesReward(address account) external onlySentry returns (uint256) {
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         require(nodesCount > 0, "NODE: CREATIME must be higher than zero");
         NodeEntity memory _node;
@@ -118,7 +118,7 @@ contract Node is Ownable {
         return rewardsTotal;
     }
 
-    function _cashoutNodeReward(address account, uint256 _creationTime) view public returns (uint256) {
+    function _cashoutNodeReward(address account, uint256 _creationTime) public returns (uint256) {
         require(_creationTime > 0, "NODE: CREATIME must be higher than zero");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 numberOfNodes = nodes.length;
@@ -126,7 +126,7 @@ contract Node is Ownable {
             numberOfNodes > 0,
             "CASHOUT ERROR: You don't have nodes to cash-out"
         );
-        NodeEntity memory node = _getNodeWithCreatime(nodes, _creationTime);
+        NodeEntity storage node = _getNodeWithCreatime(nodes, _creationTime);
         uint256 rewardNode = (block.timestamp.sub(node.lastClaimTime)).mul(rewardPerSec);
         node.lastClaimTime = block.timestamp;
         return rewardNode;
@@ -163,7 +163,7 @@ contract Node is Ownable {
 
     function _getNodesNames(address account) public view returns (string memory) {
         require(isNodeOwner(account), "GET NAMES: NO NODE OWNER");
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         NodeEntity memory _node;
         string memory names = nodes[0].name;
@@ -177,7 +177,7 @@ contract Node is Ownable {
 
     function _getNodesCreationTime(address account) public view returns (string memory) {
         require(isNodeOwner(account), "GET CREATIME: NO NODE OWNER");
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         NodeEntity memory _node;
         string memory _creationTimes = uint2str(nodes[0].creationTime);
@@ -199,7 +199,7 @@ contract Node is Ownable {
 
     function _getNodesRewardAvailable(address account) public view returns (string memory) {
         require(isNodeOwner(account), "GET REWARD: NO NODE OWNER");
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         NodeEntity memory _node;
         uint256 reward = (block.timestamp - nodes[0].lastClaimTime) * rewardPerSec;
@@ -220,7 +220,7 @@ contract Node is Ownable {
 
     function _getNodesLastClaimTime(address account) public view returns (string memory) {
         require(isNodeOwner(account), "LAST CLAIME TIME: NO NODE OWNER");
-        NodeEntity[] memory nodes = _nodesOfUser[account];
+        NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
         NodeEntity memory _node;
         string memory _lastClaimTimes = uint2str(nodes[0].lastClaimTime);
