@@ -25,7 +25,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
     address[] private _excluded;
    
     uint256 private constant MAX = ~uint256(0);
-    uint256 private _tTotal = 10**13 * 10**9;
+    uint256 private _tTotal = 10**10 * 10**9;
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
 
@@ -51,9 +51,9 @@ contract SanenergyToken is Context, IERC20, Ownable {
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
     
-    uint256 public _maxTxAmount = 10**9 * 10**9;
+    uint256 public _maxTxAmount = 10**7 * 10**9;
     mapping(address => bool) isExcludedFromTxLimit;
-    uint256 private numTokensSellToAddToLiquidity = 10**7 * 10**9;
+    uint256 private numTokensSellToAddToLiquidity = 10**5 * 10**9;
 
     address private charityAddress;
     address private devAddress;
@@ -93,7 +93,11 @@ contract SanenergyToken is Context, IERC20, Ownable {
     constructor (address _charity, address _dev) {
         _rOwned[_msgSender()] = _rTotal;
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);   // create pair in pancakeswap
+        // for mainnet
+        // IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        // for testnet
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3);
+
          // Create a uniswap pair for this new token
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -313,7 +317,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
 
     function _getCurrentSupply() private view returns(uint256, uint256) {
         uint256 rSupply = _rTotal;
-        uint256 tSupply = _tTotal;      
+        uint256 tSupply = _tTotal;
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_rOwned[_excluded[i]] > rSupply || _tOwned[_excluded[i]] > tSupply) return (_rTotal, _tTotal);
             rSupply = rSupply.sub(_rOwned[_excluded[i]]);
