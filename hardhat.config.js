@@ -41,8 +41,6 @@ module.exports = {
     account0: 0
   },
   etherscan: {
-    // apiKey: process.env.SNOWTRACE_API_KEY // avalanche
-    // apiKey: process.env.ETHERSCAN_API_KEY  // ethereum
-    apiKey: process.env.BSCSCAN_API_KEY  //bsc
+    apiKey: 'FRVGB2M4Q1DANURKWUVVWDFBEIG87NF1H2'
   }
 };

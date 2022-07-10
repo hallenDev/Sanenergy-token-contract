@@ -192,7 +192,6 @@ contract SanenergyToken is Context, IERC20, Ownable {
     }
 
     function excludeFromReward(address account) public onlyOwner {
-        // require(account != 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 'We can not exclude Uniswap router.');
         require(!_isExcluded[account], "Account is already excluded");
         if(_rOwned[account] > 0) {
             _tOwned[account] = tokenFromReflection(_rOwned[account]);
@@ -255,10 +254,8 @@ contract SanenergyToken is Context, IERC20, Ownable {
         _devFee = devFee;
     }
    
-    function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner {
-        _maxTxAmount = _tTotal.mul(maxTxPercent).div(
-            10**6
-        );
+    function setMaxTxAmount(uint256 maxTxAmount) external onlyOwner {
+        _maxTxAmount = maxTxAmount;
     }
 
     function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner {
