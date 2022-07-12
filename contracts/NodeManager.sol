@@ -23,7 +23,7 @@ contract NodeManager is Ownable {
     IUniswapV2Router02 public uniswapV2Router;
 
     address public uniswapV2Pair;
-    address public futurUsePool = 0x608d522C3b602FB45353f4f227e71124B2Fe3261;
+    address public futurUseWallet = 0x608d522C3b602FB45353f4f227e71124B2Fe3261;
     address public marketingWallet = 0x608d522C3b602FB45353f4f227e71124B2Fe3261;
 
     uint256 public rewardsFee;
@@ -86,7 +86,7 @@ contract NodeManager is Ownable {
     }
 
     function updateFuturWallet(address payable wall) external onlyOwner {
-        futurUsePool = wall;
+        futurUseWallet = wall;
     }
 
     function updateMarketingWallet(address payable wall) external onlyOwner {
@@ -182,7 +182,7 @@ contract NodeManager is Ownable {
         require(_nodeNumber[sender] < maxNodeNumber, "cannot create node more than maxNodeNumber");
         require(sender != address(0), "NODE CREATION:  creation from the zero address");
         require(!_isBlacklisted[sender], "NODE CREATION: Blacklisted address");
-        require(sender != futurUsePool && sender != marketingWallet, "NODE CREATION: futur and rewardsPool cannot create node");
+        require(sender != futurUseWallet && sender != marketingWallet, "NODE CREATION: futur and rewardsPool cannot create node");
 
         uint256 nodePrice = nodes[id].nodePrice();
         require(utilityToken.balanceOf(sender) >= nodePrice, "NODE CREATION: Balance too low for creation.");
@@ -194,7 +194,7 @@ contract NodeManager is Ownable {
             swapping = true;
 
             uint256 futurTokens = stakedToken.mul(futurFee).div(100);
-            swapAndSendToFee(futurUsePool, futurTokens);
+            swapAndSendToFee(futurUseWallet, futurTokens);
 
             uint256 rewardsPoolTokens = stakedToken.mul(rewardsFee).div(100);
             uint256 rewardsTokenstoSwap = rewardsPoolTokens.mul(rwSwap).div(100);
@@ -219,7 +219,7 @@ contract NodeManager is Ownable {
         address sender = _msgSender();
         require(sender != address(0), "CASHOUT:  creation from the zero address");
         require(!_isBlacklisted[sender], "CASHOUT: Blacklisted address");
-        require(sender != futurUsePool, "CASHOUT: futur and rewardsPool cannot cashout rewards");
+        require(sender != futurUseWallet, "CASHOUT: futur and rewardsPool cannot cashout rewards");
 
         uint256 rewardAmount = 0;
 
@@ -233,7 +233,7 @@ contract NodeManager is Ownable {
             uint256 feeAmount;
             if (cashoutFee > 0) {
                 feeAmount = rewardAmount.mul(cashoutFee).div(100);
-                swapAndSendToFee(futurUsePool, feeAmount);
+                swapAndSendToFee(futurUseWallet, feeAmount);
             }
             rewardAmount -= feeAmount;
         }
