@@ -53,7 +53,7 @@ contract SanenergyToken is Context, IERC20, Ownable {
     
     uint256 public _maxTxAmount = 5000 * 10**9;
     mapping(address => bool) isExcludedFromTxLimit;
-    uint256 private numTokensSellToAddToLiquidity = 10**5 * 10**9;
+    uint256 private numTokensSellToAddToLiquidity = 500 * 10**9;
 
     address private charityAddress;
     address private devAddress;
