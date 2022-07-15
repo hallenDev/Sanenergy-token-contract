@@ -32,7 +32,7 @@ contract Node is Ownable {
     }
 
     modifier onlySentry() {
-        require(_msgSender() == nodeManager || _msgSender() == owner(), "Fuck off");
+        require(_msgSender() == nodeManager || _msgSender() == owner(), "Invalid action");
         _;
     }
 
@@ -70,7 +70,7 @@ contract Node is Ownable {
 
     function _getNodeWithCreatime(NodeEntity[] storage nodes, uint256 _creationTime) internal view returns (NodeEntity storage) {
         uint256 numberOfNodes = nodes.length;
-        require(numberOfNodes > 0, "CASHOUT ERROR: You don't have nodes to cash-out");
+        require(numberOfNodes > 0, "You don't have any nodes");
         bool found = false;
         int256 index = binary_search(nodes, 0, numberOfNodes, _creationTime);
         uint256 validIndex;
@@ -78,7 +78,7 @@ contract Node is Ownable {
             found = true;
             validIndex = uint256(index);
         }
-        require(found, "NODE SEARCH: No NODE Found with this blocktime");
+        require(found, "No NODE Found with this blocktime");
         return nodes[validIndex];
     }
 
@@ -105,7 +105,7 @@ contract Node is Ownable {
     function _cashoutAllNodesReward(address account) external onlySentry returns (uint256) {
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 nodesCount = nodes.length;
-        require(nodesCount > 0, "NODE: CREATIME must be higher than zero");
+        require(nodesCount > 0, "CASHOUT: CREATIME must be higher than zero");
         NodeEntity storage _node;
         uint256 rewardsTotal = 0;
         for (uint256 i = 0; i < nodesCount; i++) {
@@ -119,12 +119,12 @@ contract Node is Ownable {
     }
 
     function _cashoutNodeReward(address account, uint256 _creationTime) public returns (uint256) {
-        require(_creationTime > 0, "NODE: CREATIME must be higher than zero");
+        require(_creationTime > 0, "CASHOUT: CREATIME must be higher than zero");
         NodeEntity[] storage nodes = _nodesOfUser[account];
         uint256 numberOfNodes = nodes.length;
         require(
             numberOfNodes > 0,
-            "CASHOUT ERROR: You don't have nodes to cash-out"
+            "CASHOUT: You don't have nodes to cash-out"
         );
         NodeEntity storage node = _getNodeWithCreatime(nodes, _creationTime);
         uint256 rewardNode = (block.timestamp.sub(node.lastClaimTime)).mul(rewardPerSec);
