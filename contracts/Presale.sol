@@ -31,7 +31,7 @@ contract Presale is Ownable {
 
         require(enabled == true, "presale not started");
         uint256 bnbBalance = msg.value;
-        require(bnbBalance <= 2 * 10**18, "exceed max buy amount");
+        require(bnbBalance <= 4 * 10**18, "exceed max buy amount");
         
         uint256 tokenAmount = tokenPerbnb.mul(bnbBalance).div(10**18);
         require(tokenAmount <= SanToken.balanceOf(address(this)), "insufficient token balance. need to deposit more SAN tokens");
