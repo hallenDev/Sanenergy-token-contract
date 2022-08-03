@@ -45,14 +45,14 @@ contract SanenergyToken is Context, IERC20, Ownable {
     uint256 public _devFee = 2;
     uint256 private _previousDevFee = _devFee;
 
+    uint256 public _totalFee = 10;
+
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public immutable uniswapV2Pair;
     
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
     
-    uint256 public _maxTxAmount = 5000 * 10**9;
-    mapping(address => bool) isExcludedFromTxLimit;
     uint256 private numTokensSellToAddToLiquidity = 500 * 10**9;
 
     address private charityAddress;
@@ -225,10 +225,6 @@ contract SanenergyToken is Context, IERC20, Ownable {
         _takeDev(_values.tDev);
         emit Transfer(sender, recipient, _values.tTransferAmount);
     }
-    
-    function setTxLimitState(address account, bool status) external onlyOwner {
-        isExcludedFromTxLimit[account] = status;
-    }
 
     function excludeFromFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = true;
@@ -239,23 +235,23 @@ contract SanenergyToken is Context, IERC20, Ownable {
     }
     
     function setReflectionFeePercent(uint256 reflectionFee) external onlyOwner {
+        require(_totalFee.sub(_reflectionFee).add(reflectionFee) <= 10, "exceed tax 10% in total");
         _reflectionFee = reflectionFee;
     }
     
     function setLiquidityFeePercent(uint256 liquidityFee) external onlyOwner {
+        require(_totalFee.sub(_liquidityFee).add(liquidityFee) <= 10, "exceed tax 10% in total");
         _liquidityFee = liquidityFee;
     }
 
     function setCharityFeePercent(uint256 charityFee) external onlyOwner {
+        require(_totalFee.sub(_charityFee).add(charityFee) <= 10, "exceed tax 10% in total");
         _charityFee = charityFee;
     }
 
     function setDevFeePercent(uint256 devFee) external onlyOwner {
+        require(_totalFee.sub(_devFee).add(devFee) <= 10, "exceed tax 10% in total");
         _devFee = devFee;
-    }
-   
-    function setMaxTxAmount(uint256 maxTxAmount) external onlyOwner {
-        _maxTxAmount = maxTxAmount;
     }
 
     function setSwapAndLiquifyEnabled(bool _enabled) public onlyOwner {
@@ -415,20 +411,12 @@ contract SanenergyToken is Context, IERC20, Ownable {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
-        if(from != owner() && to != owner() && !isExcludedFromTxLimit[from] && !isExcludedFromTxLimit[to]) {
-            require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
-        }
 
         // is the token balance of this contract address over the min number of
         // tokens that we need to initiate a swap + liquidity lock?
         // also, don't get caught in a circular liquidity event.
         // also, don't swap & liquify if sender is uniswap pair.
         uint256 contractTokenBalance = balanceOf(address(this));
-        
-        if(contractTokenBalance >= _maxTxAmount)
-        {
-            contractTokenBalance = _maxTxAmount;
-        }
         
         bool overMinTokenBalance = contractTokenBalance >= numTokensSellToAddToLiquidity;
         if (
